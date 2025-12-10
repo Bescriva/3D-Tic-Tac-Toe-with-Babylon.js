@@ -1,200 +1,238 @@
 class TicTacToeGame {
-    static #WIN_COMBOS = [
-        [0,1,2],[3,4,5],[6,7,8],
-        [0,3,6],[1,4,7],[2,5,8],
-        [0,4,8],[2,4,6]
-    ];
-    static #POSITIONS = [
-        [-1, -1], [0, -1], [1, -1],
-        [-1, 0], [0, 0], [1, 0],
-        [-1, 1], [0, 1], [1, 1],
-    ];
+	static #WIN_COMBOS = [
+		[0,1,2],[3,4,5],[6,7,8],
+		[0,3,6],[1,4,7],[2,5,8],
+		[0,4,8],[2,4,6]
+	];
+	static #POSITIONS = [
+		[-1, -1], [0, -1], [1, -1],
+		[-1, 0], [0, 0], [1, 0],
+		[-1, 1], [0, 1], [1, 1],
+	];
 
-    #engine;
-    #scene;
-    #board = Array(9).fill(null);
-    #boxes = [];
-    #labels = [];
-    #playerTurn = 0;
-    #isGameOver = 0;
+	#engine;
+	#scene;
+	#board = Array(9).fill(null);
+	#boxes = [];
+	#labels = [];
+	#materials;
+	#playerTurn = 0;
+	#isGameOver = 0;
 
-    constructor(canvas) {
-        BABYLON.Logger.LogLevels = BABYLON.Logger.NONE;
-        this.#engine = new BABYLON.Engine(canvas, true);
-        this.#scene = new BABYLON.Scene(this.#engine);
-        this.#initScene(canvas);
-        this.#createBoard();
-        this.#startRenderLoop();
-    }
+	constructor(canvas) {
+		BABYLON.Logger.LogLevels = BABYLON.Logger.NONE;
+		this.#engine = new BABYLON.Engine(canvas, true);
+		this.#scene = new BABYLON.Scene(this.#engine);
+		this.#materials = this.#setMaterials();
+		this.#initScene(canvas);
+		this.#createBoard();
+		this.#startRenderLoop();
+	}
 
-    #initScene(canvas) {
-        const camera = new BABYLON.ArcRotateCamera(
-            "camera",
-            0,
-            0,
-            8,
-            BABYLON.Vector3.Zero(),
-            this.#scene
-        );
-        camera.attachControl(canvas, true);
+	#setMaterials() {
+		const mats = {};
 
-        const light = new BABYLON.HemisphericLight(
-            "light",
-            new BABYLON.Vector3(1, 2, -1),
-            this.#scene
-        );
-        light.intensity = 1;
-    }
+		mats.whiteBox = new BABYLON.StandardMaterial("whiteBox", this.#scene);
+		mats.whiteBox.diffuseColor = new BABYLON.Color3(0.9, 0.9, 0.9);
 
-    #startRenderLoop() {
-        this.#engine.runRenderLoop(() => {
-            this.#scene.render();
-        });
-    }
+		mats.redBox = new BABYLON.StandardMaterial("redBox", this.#scene);
+		mats.redBox.diffuseColor = new BABYLON.Color3(1, 0.5, 0.5);
 
-    #show3DMessage(message, color = "yellow") {
-        const plane = BABYLON.MeshBuilder.CreatePlane("msg", { width: 3, height: 1 }, this.#scene);
-        plane.position = new BABYLON.Vector3(0, 1.5, 0);
-        plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+		mats.blueBox = new BABYLON.StandardMaterial("blueBox", this.#scene);
+		mats.blueBox.diffuseColor = new BABYLON.Color3(0.5, 0.5, 1);
 
-        const dt = new BABYLON.DynamicTexture("msgDt", {width:750, height:375}, this.#scene, false);
-        dt.hasAlpha = true;
-        dt.drawText(message, null, 180, "bold 100px Arial", color, "transparent");
+		mats.xLabel = new BABYLON.StandardMaterial("xLabel", this.#scene);
+		mats.xLabel.diffuseColor = new BABYLON.Color3(1, 0.2, 0.2);
 
-        const mat = new BABYLON.StandardMaterial("msgMat", this.#scene);
-        mat.diffuseTexture = dt;
-        mat.specularColor = new BABYLON.Color3(0, 0, 0);
-        mat.emissiveColor = new BABYLON.Color3(0, 0, 0);
-        plane.material = mat;
+		mats.oLabel = new BABYLON.StandardMaterial("oLabel", this.#scene);
+		mats.oLabel.diffuseColor = new BABYLON.Color3(0.2, 0.2, 1);
 
-        plane.scaling = new BABYLON.Vector3(0,0,0);
-        const anim = new BABYLON.Animation("scaleAnim", "scaling", 60,
-            BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
-            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-        );
-        const keys = [
-            {frame: 0, value: new BABYLON.Vector3(0,0,0)},
-            {frame: 10, value: new BABYLON.Vector3(1.2,1.2,1.2)},
-            {frame: 20, value: new BABYLON.Vector3(1,1,1)}
-        ];
-        anim.setKeys(keys);
-        plane.animations.push(anim);
-        this.#scene.beginAnimation(plane, 0, 20, false);
+		mats.msg = new BABYLON.StandardMaterial("msg", this.#scene);
+		mats.msg.emissiveColor = new BABYLON.Color3(0, 0, 0);
+		mats.msg.specularColor = new BABYLON.Color3(0, 0, 0);
 
-        setTimeout(() => plane.dispose(), 2000);
-    }
+		return mats;
+	}
 
-    #createXMesh(position) {
-        const group = new BABYLON.TransformNode("X", this.#scene);
+	#initScene(canvas) {
+		const camera = new BABYLON.ArcRotateCamera(
+			"camera",
+			0,
+			0,
+			8,
+			BABYLON.Vector3.Zero(),
+			this.#scene
+		);
+		camera.attachControl(canvas, true);
 
-        const bar1 = BABYLON.MeshBuilder.CreateBox("bar1", {height: 0.2, width: 0.8, depth: 0.2}, this.#scene);
-        const bar2 = BABYLON.MeshBuilder.CreateBox("bar2", {height: 0.2, width: 0.8, depth: 0.2}, this.#scene);
+		const light = new BABYLON.HemisphericLight(
+			"light",
+			new BABYLON.Vector3(1, 2, -1),
+			this.#scene
+		);
+		light.intensity = 1;
+	}
 
-        bar1.rotate(BABYLON.Axis.Y, Math.PI / 4, BABYLON.Space.LOCAL);
-        bar2.rotate(BABYLON.Axis.Y, -Math.PI / 4, BABYLON.Space.LOCAL);
+	#createBoard() {
+		TicTacToeGame.#POSITIONS.forEach((pos, i) => {
+			const box = BABYLON.MeshBuilder.CreateBox(`box${i}`, { size: 0.9 }, this.#scene);
 
-        bar1.material = new BABYLON.StandardMaterial("xMat", this.#scene);
-        bar2.material = bar1.material;
-        bar1.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+			box.position = new BABYLON.Vector3(pos[0], 0, pos[1]);
+			box.material = this.#materials.whiteBox;
+			this.#boxes[i] = box;
 
-        bar1.parent = group;
-        bar2.parent = group;
+			box.actionManager = new BABYLON.ActionManager(this.#scene);
+			box.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+				BABYLON.ActionManager.OnPickTrigger, () => this.handleMove(i)
+			));
 
-        group.position = new BABYLON.Vector3(position.x, position.y + 0.6, position.z);
-        return group;
-    }
+			box.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+				BABYLON.ActionManager.OnPointerOverTrigger, () => {
+					if (this.#board[i] === null && !this.#isGameOver) {
+						this.#boxes[i].material = this.#playerTurn === 0
+							? this.#materials.redBox
+							: this.#materials.blueBox;
+					}
+				}
+			));
 
-    #createOMesh(position) {
-        const torus = BABYLON.MeshBuilder.CreateTorus("O", {
-            diameter: 0.65,
-            thickness: 0.2,
-            tessellation: 32
-        }, this.#scene);
+			box.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+				BABYLON.ActionManager.OnPointerOutTrigger, () => {
+					if (this.#board[i] === null && !this.#isGameOver)
+						this.#boxes[i].material = this.#materials.whiteBox;
+				}
+			));
+		});
+	}
 
-        torus.material = new BABYLON.StandardMaterial("oMat", this.#scene);
-        torus.material.diffuseColor = new BABYLON.Color3(0.2, 0.2, 1);
+	#startRenderLoop() {
+		this.#engine.runRenderLoop(() => {
+			this.#scene.render();
+		});
+	}
 
-        torus.position = new BABYLON.Vector3(position.x, position.y + 0.6, position.z);
-        return torus;
-    }
+	handleMove(index) {
+		if (this.#board[index] !== null || this.#isGameOver)
+			return;
 
-    #checkWin(symbol) {
-        return TicTacToeGame.#WIN_COMBOS.some(([a, b, c]) =>
-            this.#board[a] === symbol &&
-            this.#board[b] === symbol &&
-            this.#board[c] === symbol
-        );
-    }
+		const symbol = this.#playerTurn === 0 ? "X" : "O";
 
-    handleMove(index) {
-        if (this.#board[index] !== null || this.#isGameOver)
-            return;
+		if (symbol === "X") {
+			this.#boxes[index].material = this.#materials.redBox
+			this.#labels[index] = this.#createXMesh(this.#boxes[index].position);
+		} else {
+			this.#boxes[index].material = this.#materials.blueBox;
+			this.#labels[index] = this.#createOMesh(this.#boxes[index].position);
+		}
 
-        const symbol = this.#playerTurn === 0 ? "X" : "O";
+		const didWin = this.#checkWin(symbol);
+		const didDraw = this.#board.every(c => c !== null)
 
-        this.#board[index] = symbol;
-        this.#boxes[index].material.diffuseColor = symbol === "X"
-            ? new BABYLON.Color3(1, 0.5, 0.5)
-            : new BABYLON.Color3(0.5, 0.5, 1);
+		if (didDraw || didWin) {
+			this.#isGameOver = 1;
+			setTimeout(() => {
+				const msg = didWin
+					? `Player ${symbol} Wins!`
+					: "It's a Tie!";
 
-        if (symbol === "X")
-            this.#labels[index] = this.#createXMesh(this.#boxes[index].position);
-        else
-            this.#labels[index] = this.#createOMesh(this.#boxes[index].position);
+				const color = didWin
+					? symbol === "X" ? "red" : "blue"
+					: "white";
 
-        const didWin = this.#checkWin(symbol);
-        const didDraw = this.#board.every(c => c !== null)
+				this.#show3DMessage(msg, color);
+				setTimeout(() => this.resetGame(), 2000);
+			}, 100);
+			return;
+		}
 
-        if (didDraw || didWin) {
-            this.#isGameOver = 1;
-            setTimeout(() => {
-                const msg = didWin
-                    ? `Player ${symbol} Wins!`
-                    : "It's a Tie!";
+		this.#playerTurn = 1 - this.#playerTurn;
+	}
 
-                const color = didWin
-                    ? symbol === "X" ? "red" : "blue"
-                    : "white";
+	#checkWin(symbol) {
+		return TicTacToeGame.#WIN_COMBOS.some(([a, b, c]) =>
+			this.#board[a] === symbol &&
+			this.#board[b] === symbol &&
+			this.#board[c] === symbol
+		);
+	}
 
-                this.#show3DMessage(msg, color);
-                setTimeout(() => this.resetGame(), 2000);
-            }, 100);
-            return;
-        }
+	resetGame() {
+		this.#boxes.forEach(b => b.dispose());
+		this.#labels.forEach(l => l.dispose());
+		this.#board = Array(9).fill(null);
+		this.#boxes = [];
+		this.#labels = [];
+		this.#playerTurn = 0;
+		this.#isGameOver = 0;
+		this.#createBoard();
+	}
 
-        this.#playerTurn = 1 - this.#playerTurn;
-    }
+	#createXMesh(position) {
+		const group = new BABYLON.TransformNode("X", this.#scene);
 
-    resetGame() {
-        this.#boxes.forEach(b => b.dispose());
-        this.#labels.forEach(l => l.dispose());
-        this.#board = Array(9).fill(null);
-        this.#boxes = [];
-        this.#labels = [];
-        this.#playerTurn = 0;
-        this.#isGameOver = 0;
-        this.#createBoard();
-    }
+		const [bar1, bar2] = ["bar1", "bar2"].map(name =>
+			BABYLON.MeshBuilder.CreateBox(name, {
+				height: 0.2,
+				width: 0.8,
+				depth: 0.2
+			}, this.#scene)
+		);
 
-    #createBoard() {
-        TicTacToeGame.#POSITIONS.forEach((pos, i) => {
-            const box = BABYLON.MeshBuilder.CreateBox(`box${i}`, { size: 0.9 }, this.#scene);
-            box.position = new BABYLON.Vector3(pos[0], 0, pos[1]);
+		[bar1, bar2].forEach((bar, i) => {
+			bar.rotate(BABYLON.Axis.Y, Math.PI / 4 * ((i == 0) ? 1 : -1), BABYLON.Space.LOCAL);
+			bar.material = this.#materials.xLabel;
+			bar.parent = group;
+		});
 
-            const mat = new BABYLON.StandardMaterial(`mat${i}`, this.#scene);
-            mat.diffuseColor = new BABYLON.Color3(0.9, 0.9, 0.9);
-            box.material = mat;
+		group.position = new BABYLON.Vector3(position.x, position.y + 0.6, position.z);
+		group.freezeWorldMatrix();
+		return group;
+	}
 
-            box.actionManager = new BABYLON.ActionManager(this.#scene);
-            box.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, () => {
-                    this.handleMove(i);
-                })
-            );
+	#createOMesh(position) {
+		const torus = BABYLON.MeshBuilder.CreateTorus("O", {
+			diameter: 0.65,
+			thickness: 0.2,
+			tessellation: 32
+		}, this.#scene);
 
-            this.#boxes[i] = box;
-        });
-    }
+		torus.material = this.#materials.oLabel;
+		torus.position = new BABYLON.Vector3(position.x, position.y + 0.6, position.z);
+		torus.freezeWorldMatrix();
+		return torus;
+	}
+
+	#show3DMessage(message, color = "yellow") {
+		const plane = BABYLON.MeshBuilder.CreatePlane("msg", {width: 3, height: 1}, this.#scene);
+		plane.position = new BABYLON.Vector3(0, 1.5, 0);
+		plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+
+		const dt = new BABYLON.DynamicTexture("msgDt", {width:750, height:375}, this.#scene, false);
+		dt.hasAlpha = true;
+		dt.drawText(message, null, 180, "bold 100px Arial", color, "transparent");
+
+		plane.material = this.#materials.msg;
+		plane.material.diffuseTexture = dt;
+
+		plane.scaling = new BABYLON.Vector3(0,0,0);
+		const anim = new BABYLON.Animation("scaleAnim", "scaling", 60,
+			BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+			BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		const keys = [
+			{frame: 0, value: new BABYLON.Vector3(0,0,0)},
+			{frame: 10, value: new BABYLON.Vector3(1.2,1.2,1.2)},
+			{frame: 20, value: new BABYLON.Vector3(1,1,1)}
+		];
+		anim.setKeys(keys);
+		plane.animations.push(anim);
+		this.#scene.beginAnimation(plane, 0, 20, false);
+
+		setTimeout(() => {
+			dt.dispose();
+			plane.dispose()
+		}, 2000);
+	}
 }
 
 const game = new TicTacToeGame(document.getElementById("canvas"));
