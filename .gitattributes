@@ -1,0 +1,7 @@
+* text=auto eol=crlf
+*.js text eol=crlf
+*.html text eol=crlf
+*.md text eol=crlf
+
+*.js linguist-language=JavaScript
+*.html linguist-language=JavaScript
